@@ -80,7 +80,7 @@ project modules and must be importable from the working directory.
 
    ```python
    DATASETS = ["3Sources"]
-   SUBSAMPLING_METHODS = ["random", "kernel_herding", "clustering"]
+   SUBSAMPLING_METHODS = ["random", "MV_kernel_herding", "clustering"]
    N_SUBS = [50, 100, 200]
    ```
 
@@ -142,7 +142,7 @@ per-trial subsampling/training time during the search.
 | Key | Class | Notes |
 |---|---|---|
 | `random` | `RandomSubsamplingPerView` | Uniform random selection per view. |
-| `kernel_herding` | `MultiViewKernelHerding` | Uses the trial's kernel gammas; `epsilon = inf`; tunes `warmup_steps`. |
+| `MV_kernel_herding` | `MultiViewKernelHerding` | Uses the trial's kernel gammas; `epsilon = inf`; tunes `warmup_steps`. |
 | `clustering` | `ClusteringSubsampling` | Clustering-based selection. |
 
 **All methods are applied in a stratified way.** The method runs

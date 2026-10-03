@@ -8,7 +8,9 @@ def get_dataset(dataset_name, dataset_root=dataset_root):
     if dataset_name not in dataset_info:
         raise ValueError(f"Unknown dataset {dataset_name}.")
     n_views = dataset_info[dataset_name]['n_views']
-    data = loadmat(f"{dataset_root}/{dataset_name}.mat")
+    # 'file_name' is optional; by default the file is <dataset_name>.mat.
+    file_name = dataset_info[dataset_name].get('file_name', dataset_name)
+    data = loadmat(f"{dataset_root}/{file_name}.mat")
     brute_X = data['X']
     y = data['y'].flatten()
     X_views = [

@@ -59,7 +59,8 @@ METRIC_LABELS = {
 }
 METHOD_LABELS = {
     "random": "Random",
-    "kernel_herding": "Kernel herding",
+    "MV_kernel_herding": "MV kernel herding",
+    "simple_kernel_herding": "Kernel herding",
     "clustering": "Clustering",
 }
 # name -> (column, higher_is_better, decimals)

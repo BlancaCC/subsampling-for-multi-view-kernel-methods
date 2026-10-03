@@ -1,2 +1,3 @@
 from .Multiclass_MV_LSSVM import Multiclass_MV_LSSVM, build_reconstruction_operator, stratified_random_indices
 from .late_fusion import LateFusion_LSSVM
+from .early_fusion import EarlyFusion_LSSVM, ViewConcatenator

@@ -61,8 +61,8 @@ from subsampling_methods import (
 )
 
 # ------------------------------ experiment grid -----------------------------
-DATASETS: Sequence[str] = ['Cora','OutdoorScene','ACM','Caltech','Prokaryotic','ProteinFold',"NUS-WIDE", "3Sources"]
-SUBSAMPLING_METHODS: Sequence[str] = ["random", "kernel_herding", "clustering"]
+DATASETS: Sequence[str] = ['Cora','OutdoorScene','ACM','Caltech','Prokaryotic','ProteinFold',"NUS-WIDE", "3Sources", "YouTube"]
+SUBSAMPLING_METHODS: Sequence[str] = ["random", "MV_kernel_herding", "simple_kernel_herding", "clustering"]
 N_SUBS: Sequence[int] = [10, 25, 50, 100, 150, 200]
 
 # ------------------------------ protocol config -----------------------------
@@ -80,14 +80,18 @@ SAVE_SELECTED_INDICES = True  # Save the subsampled rows of every fold.
 # ------------------------------ sampler registry ----------------------------
 SAMPLERS: Mapping[str, type] = {
     "random": RandomSubsamplingPerView,
-    "kernel_herding": MultiViewKernelHerding,
+    "MV_kernel_herding": MultiViewKernelHerding,
+    # Plain MMD herding: herding with warmup over all n_sub steps.
+    "simple_kernel_herding": MultiViewKernelHerding,
     "clustering": ClusteringSubsampling,
 }
 # Fixed constructor arguments. n_sub, kernel_gammas and random_state are
 # always set by this script.
 SAMPLER_KWARGS: Mapping[str, Mapping[str, Any]] = {
     "random": {},
-    "kernel_herding": {"epsilon": np.inf},
+    "MV_kernel_herding": {"epsilon": np.inf},
+    # warmup_steps = 1.0 (100% of n_sub): no joint HSIC phase. Fixed, not tuned.
+    "simple_kernel_herding": {"epsilon": np.inf, "warmup_steps": 1.0},
     "clustering": {},
 }
 # Herding warmup_steps, as a fraction of n_sub (0 itself is invalid).
@@ -119,7 +123,7 @@ def take(views: Sequence[np.ndarray], idx: np.ndarray) -> list[np.ndarray]:
 def n_trials_for(method: str, n_views: int) -> int:
     """Returns the number of Optuna trials for a method and view count."""
     n_trials = N_TRIALS_PER_DIMENSION * (2 * n_views + 1)
-    if method == "kernel_herding":
+    if method == "MV_kernel_herding":
         # Herding has one extra tuned hyperparameter (warmup_steps).
         n_trials += 2 * N_TRIALS_PER_DIMENSION
     return n_trials
@@ -138,7 +142,7 @@ def sampler_params_from(
         Keyword arguments for the sampler. Only kernel herding has tuned
         arguments (warmup_steps).
     """
-    if method != "kernel_herding":
+    if method != "MV_kernel_herding":
         return {}
     if isinstance(source, optuna.trial.Trial):
         warmup = source.suggest_float("warmup_steps", *WARMUP_RANGE)

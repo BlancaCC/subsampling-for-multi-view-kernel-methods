@@ -44,6 +44,14 @@ dataset_info = {
         'n_views': 4,
         'n_classes': 7,
         'n_features_per_view': [1433],
-    }
+    },
+    'YouTube': {
+        # YouTube Multiview Video Games, 3 views, 500-sample class-balanced
+        # subset (same file as used in AW_LSSVM).
+        'file_name': 'YouTube3views_subsampled_500',
+        'n_views': 3,
+        'n_classes': 7,
+        'n_features_per_view': [1024, 647, 2000],
+    },
 
 }
