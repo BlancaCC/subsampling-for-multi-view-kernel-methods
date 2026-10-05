@@ -62,6 +62,7 @@ METHOD_LABELS = {
     "MV_kernel_herding": "MV kernel herding",
     "simple_kernel_herding": "Kernel herding",
     "clustering": "Clustering",
+    "fixed_size_entropy": "Fixed-size (Rényi entropy)",
 }
 # name -> (column, higher_is_better, decimals)
 TARGETS: Mapping[str, tuple[str, bool, int]] = {

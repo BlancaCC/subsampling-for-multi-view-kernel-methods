@@ -1,3 +1,4 @@
 from .MultiViewKernelHerding import MultiViewKernelHerding
 from .RandomSubsamplingPerView import RandomSubsamplingPerView
 from .ClusteringSubsampling import ClusteringSubsampling
+from .FixedSizeEntropySubsampling import FixedSizeEntropySubsampling

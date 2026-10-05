@@ -68,7 +68,7 @@ Developed with Python 3.12.
 
 ```bash
 python -m venv .venv && source .venv/bin/activate
-pip install numpy pandas scikit-learn scipy matplotlib optuna
+pip install -r ../requirements.txt   # from 1_BO_subsampling_and_metrics
 ```
 
 `get_data.py`, `multi_view_learning_models` and `subsampling_methods` are

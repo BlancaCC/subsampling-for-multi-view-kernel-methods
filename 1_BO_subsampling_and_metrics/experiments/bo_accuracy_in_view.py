@@ -37,7 +37,6 @@ from __future__ import annotations
 
 import argparse
 import datetime
-import itertools
 import logging
 import math
 import platform
@@ -62,14 +61,19 @@ from multi_view_learning_models import Multiclass_MV_LSSVM
 # Adjust this import to wherever the sampler package lives in your project.
 from subsampling_methods import (
     ClusteringSubsampling,
+    FixedSizeEntropySubsampling,
     MultiViewKernelHerding,
     RandomSubsamplingPerView,
 )
 
 # ------------------------------ experiment grid -----------------------------
 DATASETS: Sequence[str] = ['Cora','OutdoorScene','ACM','Caltech','Prokaryotic','ProteinFold',"NUS-WIDE", "3Sources", "YouTube"]
-SUBSAMPLING_METHODS: Sequence[str] = ["random", "MV_kernel_herding", "simple_kernel_herding", "clustering"]
+SUBSAMPLING_METHODS: Sequence[str] = ["random", "MV_kernel_herding", "simple_kernel_herding", "clustering", "fixed_size_entropy"]
 N_SUBS: Sequence[int] = [10, 25, 50, 100, 150, 200]
+# Extra subset sizes, run only on LARGE_DATASETS (> 694 samples). Smaller
+# datasets run out of samples per class at these sizes.
+LARGE_N_SUBS: Sequence[int] = [300, 400, 500, 600]
+LARGE_DATASETS = frozenset({"NUS-WIDE", "Caltech", "OutdoorScene", "ACM", "Cora"})
 
 # ------------------------------ protocol config -----------------------------
 N_OUTER_FOLDS = 5          # Outer CV: train_full / test.
@@ -101,6 +105,9 @@ SAMPLERS: Mapping[str, type] = {
     # Plain MMD herding: herding with warmup over all n_sub steps.
     "simple_kernel_herding": MultiViewKernelHerding,
     "clustering": ClusteringSubsampling,
+    # Fixed-size LS-SVM prototypes (De Brabanter et al., 2010): maximum
+    # quadratic Renyi entropy, per view, with the trial's kernel gammas.
+    "fixed_size_entropy": FixedSizeEntropySubsampling,
 }
 # Fixed constructor arguments. n_sub, kernel_gammas and random_state are
 # always set by this script.
@@ -110,6 +117,7 @@ SAMPLER_KWARGS: Mapping[str, Mapping[str, Any]] = {
     # warmup_steps = 1.0 (100% of n_sub): no joint HSIC phase. Fixed, not tuned.
     "simple_kernel_herding": {"epsilon": np.inf, "warmup_steps": 1.0},
     "clustering": {},
+    "fixed_size_entropy": {},
 }
 # Herding warmup_steps, as a fraction of n_sub (0 itself is invalid).
 WARMUP_RANGE = (0.01, 1.0)
@@ -132,6 +140,23 @@ logger = logging.getLogger(__name__)
 
 
 # ------------------------------ helpers -------------------------------------
+def build_runs(
+    datasets: Sequence[str],
+    methods: Sequence[str],
+    n_subs: Sequence[int],
+    large_n_subs: Sequence[int],
+) -> list[tuple[str, str, int]]:
+    """Lists the (dataset, method, n_sub) runs; LARGE_DATASETS also get
+    the `large_n_subs` sizes."""
+    return [
+        (dataset, method, n_sub)
+        for dataset in datasets
+        for method in methods
+        for n_sub in list(n_subs)
+        + (list(large_n_subs) if dataset in LARGE_DATASETS else [])
+    ]
+
+
 def take(views: Sequence[np.ndarray], idx: np.ndarray) -> list[np.ndarray]:
     """Selects the rows `idx` from every view."""
     return [view[idx] for view in views]
@@ -353,6 +378,8 @@ def write_experiment_metadata(root: Path) -> None:
             "datasets": list(DATASETS),
             "subsampling_methods": list(SUBSAMPLING_METHODS),
             "n_subs": list(N_SUBS),
+            "large_n_subs": list(LARGE_N_SUBS),
+            "large_datasets": sorted(LARGE_DATASETS),
             "n_outer_folds": N_OUTER_FOLDS,
             "val_size": VAL_SIZE,
             "refit_on_train_plus_val": REFIT_ON_TRAIN_PLUS_VAL,
@@ -634,7 +661,7 @@ def main() -> None:
         raise KeyError(f"Unknown methods {unknown}. Options: {list(SAMPLERS)}")
 
     write_experiment_metadata(RESULTS_ROOT)
-    runs = list(itertools.product(DATASETS, SUBSAMPLING_METHODS, N_SUBS))
+    runs = build_runs(DATASETS, SUBSAMPLING_METHODS, N_SUBS, LARGE_N_SUBS)
     logger.info("Starting %d %s runs.", len(runs), MODEL_NAME)
 
     data_cache: dict[str, tuple[list[np.ndarray], np.ndarray]] = {}

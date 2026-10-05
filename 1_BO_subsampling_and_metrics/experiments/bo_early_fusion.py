@@ -18,7 +18,6 @@ selected_indices.csv has a single view (view = 0, the concatenation).
 from __future__ import annotations
 
 import datetime
-import itertools
 import math
 import platform
 import socket
@@ -50,6 +49,8 @@ from experiments.bo_accuracy_in_view import (
     take,
     timed,
     write_mapping_csv,
+    LARGE_DATASETS,
+    build_runs,
 )
 from get_data import get_dataset
 from multi_view_learning_models import EarlyFusion_LSSVM, ViewConcatenator
@@ -60,8 +61,9 @@ MODEL_NAME = "early_fusion"
 DATASETS: Sequence[str] = ['Cora','OutdoorScene','ACM','Caltech','Prokaryotic','ProteinFold',"NUS-WIDE", "3Sources", "YouTube"]
 # Single (concatenated) view: multi-view "MV_kernel_herding" has no HSIC phase
 # and reduces to simple_kernel_herding, so it is not run.
-SUBSAMPLING_METHODS: Sequence[str] = ["random", "simple_kernel_herding", "clustering"]
+SUBSAMPLING_METHODS: Sequence[str] = ["random", "simple_kernel_herding", "clustering", "fixed_size_entropy"]
 N_SUBS: Sequence[int] = [10, 25, 50, 100, 150, 200]
+LARGE_N_SUBS: Sequence[int] = [300, 400, 500, 600]  # LARGE_DATASETS only.
 
 # ------------------------------ protocol config -----------------------------
 N_OUTER_FOLDS = 5          # Outer CV: train_full / test.
@@ -157,6 +159,8 @@ def write_experiment_metadata(root: Path) -> None:
             "datasets": list(DATASETS),
             "subsampling_methods": list(SUBSAMPLING_METHODS),
             "n_subs": list(N_SUBS),
+            "large_n_subs": list(LARGE_N_SUBS),
+            "large_datasets": sorted(LARGE_DATASETS),
             "n_outer_folds": N_OUTER_FOLDS,
             "val_size": VAL_SIZE,
             "refit_on_train_plus_val": REFIT_ON_TRAIN_PLUS_VAL,
@@ -384,7 +388,7 @@ def main() -> None:
         raise KeyError(f"Unknown methods {unknown}. Options: {list(SAMPLERS)}")
 
     write_experiment_metadata(RESULTS_ROOT)
-    runs = list(itertools.product(DATASETS, SUBSAMPLING_METHODS, N_SUBS))
+    runs = build_runs(DATASETS, SUBSAMPLING_METHODS, N_SUBS, LARGE_N_SUBS)
     logger.info("Starting %d early-fusion runs.", len(runs))
 
     data_cache: dict[str, tuple[list[np.ndarray], np.ndarray]] = {}
