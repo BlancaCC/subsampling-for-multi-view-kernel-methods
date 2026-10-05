@@ -5,7 +5,12 @@ every combination it performs a nested cross-validation (outer stratified
 K-fold, inner stratified hold-out tuned with Optuna) and stores everything
 as CSV files.
 
-Output layout (under RESULTS_ROOT):
+Run from 1_BO_subsampling_and_metrics:
+
+    python3 -m experiments.bo_accuracy_in_view                  # with correction terms
+    python3 -m experiments.bo_accuracy_in_view --no-correction  # without
+
+Output layout (under RESULTS_ROOT, one folder per setting):
 
     experiment_metadata.csv          Environment and global configuration.
     manifest.csv                     One row per run: status, elapsed time.
@@ -30,6 +35,7 @@ Timings stored per fold (all in seconds):
 
 from __future__ import annotations
 
+import argparse
 import datetime
 import itertools
 import logging
@@ -71,7 +77,18 @@ VAL_SIZE = 0.25            # Inner hold-out: train_full -> train / validation.
 REFIT_ON_TRAIN_PLUS_VAL = True
 SEED = 42
 N_TRIALS_PER_DIMENSION = 10
-RESULTS_ROOT = Path("results")
+# Correction terms of the MV-LSSVM extension (Multiclass_MV_LSSVM.reconstruct).
+# True: removed samples' errors are reconstructed (proposed model).
+# False: kept samples only, no correction terms (ablation). Set with the
+# --no-correction command-line flag; each setting has its own results folder.
+RECONSTRUCT = True
+RESULTS_ROOTS = {
+    True: Path("results_mv_lssvm_correction"),
+    False: Path("results_mv_lssvm_no_correction"),
+}
+MODEL_NAMES = {True: "mv_lssvm_correction", False: "mv_lssvm_no_correction"}
+RESULTS_ROOT = RESULTS_ROOTS[RECONSTRUCT]
+MODEL_NAME = MODEL_NAMES[RECONSTRUCT]
 
 SKIP_COMPLETED = True      # Skip runs whose summary.csv already exists.
 SAVE_PREDICTIONS = True    # Save test predictions of every fold.
@@ -248,7 +265,8 @@ def build_model(
 ) -> Multiclass_MV_LSSVM:
     """Builds the multi-view LS-SVM."""
     return Multiclass_MV_LSSVM(
-        kernel_gammas=ker, selected_indices=selected, gammas=reg, rho=rho
+        kernel_gammas=ker, selected_indices=selected, gammas=reg, rho=rho,
+        reconstruct=RECONSTRUCT,
     )
 
 
@@ -321,6 +339,8 @@ def write_experiment_metadata(root: Path) -> None:
     write_mapping_csv(
         root / "experiment_metadata.csv",
         {
+            "model": MODEL_NAME,
+            "reconstruct": RECONSTRUCT,
             "start_time": datetime.datetime.now().isoformat(timespec="seconds"),
             "git_commit": get_git_commit(),
             "hostname": socket.gethostname(),
@@ -366,12 +386,14 @@ def run_nested_cv(
     out_dir.mkdir(parents=True, exist_ok=True)
     n_views = len(views)
     n_trials = n_trials_for(method, n_views)
-    run_id = {"dataset": dataset, "subsampling_method": method, "n_sub": n_sub}
+    run_id = {"model": MODEL_NAME, "dataset": dataset,
+              "subsampling_method": method, "n_sub": n_sub}
 
     write_mapping_csv(
         out_dir / "run_config.csv",
         {
             **run_id,
+            "reconstruct": RECONSTRUCT,
             "n_samples": len(y),
             "n_views": n_views,
             "n_features_per_view": [v.shape[1] for v in views],
@@ -596,20 +618,31 @@ def append_manifest(root: Path, row: Mapping[str, Any]) -> None:
 # ------------------------------ main ----------------------------------------
 def main() -> None:
     """Runs the whole experiment grid sequentially."""
+    global RECONSTRUCT, RESULTS_ROOT, MODEL_NAME
+    parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    parser.add_argument(
+        "--no-correction", action="store_true",
+        help="Train without correction terms (reconstruct=False).",
+    )
+    args = parser.parse_args()
+    RECONSTRUCT = not args.no_correction
+    RESULTS_ROOT = RESULTS_ROOTS[RECONSTRUCT]
+    MODEL_NAME = MODEL_NAMES[RECONSTRUCT]
+
     unknown = [m for m in SUBSAMPLING_METHODS if m not in SAMPLERS]
     if unknown:
         raise KeyError(f"Unknown methods {unknown}. Options: {list(SAMPLERS)}")
 
     write_experiment_metadata(RESULTS_ROOT)
     runs = list(itertools.product(DATASETS, SUBSAMPLING_METHODS, N_SUBS))
-    logger.info("Starting %d runs.", len(runs))
+    logger.info("Starting %d %s runs.", len(runs), MODEL_NAME)
 
     data_cache: dict[str, tuple[list[np.ndarray], np.ndarray]] = {}
     for i, (dataset, method, n_sub) in enumerate(runs, start=1):
         out_dir = RESULTS_ROOT / dataset / method / str(n_sub)
-        tag = f"[{i}/{len(runs)}] {dataset}/{method}/{n_sub}"
-        run_id = {"dataset": dataset, "subsampling_method": method,
-                  "n_sub": n_sub}
+        tag = f"[{i}/{len(runs)}] {MODEL_NAME}/{dataset}/{method}/{n_sub}"
+        run_id = {"model": MODEL_NAME, "dataset": dataset,
+                  "subsampling_method": method, "n_sub": n_sub}
 
         if SKIP_COMPLETED and (out_dir / "summary.csv").exists():
             logger.info("%s already completed, skipping.", tag)
