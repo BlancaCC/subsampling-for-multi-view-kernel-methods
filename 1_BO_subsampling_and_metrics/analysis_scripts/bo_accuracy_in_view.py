@@ -89,11 +89,12 @@ def label(method: str) -> str:
     return METHOD_LABELS.get(method, method)
 
 
-def save_figure(fig: plt.Figure, stem: Path) -> None:
+def save_figure(fig: plt.Figure, stem: Path, close: bool = True) -> None:
     """Saves a figure as PNG and PDF (stem has no extension)."""
     for ext in ("png", "pdf"):
         fig.savefig(Path(f"{stem}.{ext}"), dpi=FIG_DPI, bbox_inches="tight")
-    plt.close(fig)
+    if close:
+        plt.close(fig)
 
 
 def style_map(methods: Sequence[str]) -> dict[str, tuple]:
@@ -474,7 +475,19 @@ def plot_tradeoff(
     ax.grid(alpha=0.3, which="both")
     ax.legend(frameon=False)
     fig.tight_layout()
-    save_figure(fig, out / f"{dataset}_tradeoff")
+    save_figure(fig, out / f"{dataset}_tradeoff", close=False)
+
+    # Paper version: PostScript, no title and no axis labels. PostScript has
+    # no transparency, so the grid gets an opaque light gray instead of alpha.
+    ax.set_title("")
+    ax.set_xlabel("")
+    ax.set_ylabel("")
+    ax.grid(which="both", color="0.85", alpha=1.0)
+    fig.tight_layout()
+    paper_dir = out / "paper"
+    paper_dir.mkdir(exist_ok=True)
+    fig.savefig(paper_dir / f"{dataset}_tradeoff.ps", bbox_inches="tight")
+    plt.close(fig)
 
 
 def plot_average_ranks(
