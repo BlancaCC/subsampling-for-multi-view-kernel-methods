@@ -54,6 +54,7 @@ import pandas as pd
 import sklearn
 from sklearn.metrics import accuracy_score, balanced_accuracy_score, f1_score
 from sklearn.model_selection import StratifiedKFold, train_test_split
+from sklearn.preprocessing import MinMaxScaler
 
 from get_data import get_dataset
 from multi_view_learning_models import Multiclass_MV_LSSVM
@@ -87,8 +88,8 @@ N_TRIALS_PER_DIMENSION = 10
 # --no-correction command-line flag; each setting has its own results folder.
 RECONSTRUCT = True
 RESULTS_ROOTS = {
-    True: Path("results_mv_lssvm_correction"),
-    False: Path("results_mv_lssvm_no_correction"),
+    True: Path("results_mv_lssvm_correction_minmax"),
+    False: Path("results_mv_lssvm_no_correction_minmax"),
 }
 MODEL_NAMES = {True: "mv_lssvm_correction", False: "mv_lssvm_no_correction"}
 RESULTS_ROOT = RESULTS_ROOTS[RECONSTRUCT]
@@ -160,6 +161,30 @@ def build_runs(
 def take(views: Sequence[np.ndarray], idx: np.ndarray) -> list[np.ndarray]:
     """Selects the rows `idx` from every view."""
     return [view[idx] for view in views]
+
+
+# Every feature of every view is scaled to [0, 1]. Used by all experiments.
+FEATURE_SCALING = "minmax"
+
+
+def minmax_scale(
+    fit_views: Sequence[np.ndarray], *other_views: Sequence[np.ndarray]
+) -> tuple[list[np.ndarray], ...]:
+    """MinMax-scales every view, fitted on `fit_views` only.
+
+    Each feature is mapped to [0, 1] with the min/max of the training rows;
+    the same transform is applied to `other_views` (validation or test
+    rows, which may fall slightly outside [0, 1]). Constant features
+    become 0.
+
+    Returns:
+        (scaled fit_views, scaled other_views...), each a list of views.
+    """
+    scalers = [MinMaxScaler().fit(view) for view in fit_views]
+    return tuple(
+        [s.transform(view) for s, view in zip(scalers, views)]
+        for views in (fit_views, *other_views)
+    )
 
 
 def n_trials_for(method: str, n_views: int) -> int:
@@ -385,6 +410,7 @@ def write_experiment_metadata(root: Path) -> None:
             "refit_on_train_plus_val": REFIT_ON_TRAIN_PLUS_VAL,
             "seed": SEED,
             "n_trials_per_dimension": N_TRIALS_PER_DIMENSION,
+            "feature_scaling": FEATURE_SCALING,
             "warmup_range": WARMUP_RANGE,
             "sampler_kwargs": dict(SAMPLER_KWARGS),
         },
@@ -453,6 +479,8 @@ def run_nested_cv(
         )
         x_train, y_train = take(views, train_idx), y[train_idx]
         x_val, y_val = take(views, val_idx), y[val_idx]
+        # MinMax scaling fitted on the training rows only (no leakage).
+        x_train, x_val = minmax_scale(x_train, x_val)
 
         # 2) Hyperparameter search: subsample on train, fit, score on val.
         def objective(trial: optuna.trial.Trial) -> float:
@@ -497,6 +525,7 @@ def run_nested_cv(
         fit_idx = train_full_idx if REFIT_ON_TRAIN_PLUS_VAL else train_idx
         x_fit, y_fit = take(views, fit_idx), y[fit_idx]
         x_test, y_test = take(views, test_idx), y[test_idx]
+        x_fit, x_test = minmax_scale(x_fit, x_test)
 
         (selected, n_eff), subsampling_time = timed(
             lambda: subsample(

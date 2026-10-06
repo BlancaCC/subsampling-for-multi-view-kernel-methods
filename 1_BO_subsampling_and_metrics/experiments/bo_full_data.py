@@ -55,6 +55,8 @@ from experiments.bo_accuracy_in_view import (
     take,
     timed,
     write_mapping_csv,
+    FEATURE_SCALING,
+    minmax_scale,
 )
 from get_data import get_dataset
 from multi_view_learning_models import (
@@ -74,7 +76,7 @@ VAL_SIZE = 0.25            # Inner hold-out: train_full -> train / validation.
 REFIT_ON_TRAIN_PLUS_VAL = True
 SEED = 42
 N_TRIALS_PER_DIMENSION = 10
-RESULTS_ROOT = Path("results_full_data")  # One sub-folder per model.
+RESULTS_ROOT = Path("results_full_data_minmax")  # One sub-folder per model.
 
 SKIP_COMPLETED = True      # Skip runs whose summary.csv already exists.
 SAVE_PREDICTIONS = True    # Save test predictions of every fold.
@@ -160,6 +162,7 @@ def write_experiment_metadata(root: Path, model: str) -> None:
             "refit_on_train_plus_val": REFIT_ON_TRAIN_PLUS_VAL,
             "seed": SEED,
             "n_trials_per_dimension": N_TRIALS_PER_DIMENSION,
+            "feature_scaling": FEATURE_SCALING,
             "early_fusion_scaling": early_exp.SCALING,
         },
     )
@@ -222,6 +225,8 @@ def run_nested_cv(
         )
         x_train, y_train = take(views, train_idx), y[train_idx]
         x_val, y_val = take(views, val_idx), y[val_idx]
+        # MinMax scaling fitted on the training rows only (no leakage).
+        x_train, x_val = minmax_scale(x_train, x_val)
 
         # 2) Hyperparameter search: fit on all of train, score on val.
         def objective(trial: optuna.trial.Trial) -> float:
@@ -255,6 +260,7 @@ def run_nested_cv(
         fit_idx = train_full_idx if REFIT_ON_TRAIN_PLUS_VAL else train_idx
         x_fit, y_fit = take(views, fit_idx), y[fit_idx]
         x_test, y_test = take(views, test_idx), y[test_idx]
+        x_fit, x_test = minmax_scale(x_fit, x_test)
 
         clf = build_model(best_params, len(fit_idx))
         _, training_time = timed(lambda: clf.fit(x_fit, y_fit))

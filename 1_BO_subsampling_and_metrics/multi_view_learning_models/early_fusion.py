@@ -6,6 +6,8 @@ Fusion (ViewConcatenator, fitted on the training rows only):
     scaling="view": every feature is z-scored, then view v is divided by
         sqrt(d_v) so each view contributes equally to the squared distances
         of the single RBF kernel, whatever its dimension or feature scale.
+    scaling="weight": view v is only divided by sqrt(d_v) (for inputs that
+        are already scaled, e.g. MinMax), so each view counts equally.
     scaling=None:   raw concatenation.
 
 Training (one-vs-rest for m classes):
@@ -23,16 +25,16 @@ class ViewConcatenator(BaseEstimator, TransformerMixin):
 
     Parameters
     ----------
-    scaling : "view" (z-score features, then weight view v by 1/sqrt(d_v))
-        or None (raw concatenation).
+    scaling : "view" (z-score features, then weight view v by 1/sqrt(d_v)),
+        "weight" (only the 1/sqrt(d_v) weighting) or None (raw).
     """
 
     def __init__(self, scaling="view"):
         self.scaling = scaling
 
     def fit(self, X_list, y=None):
-        if self.scaling not in ("view", None):
-            raise ValueError("scaling must be 'view' or None")
+        if self.scaling not in ("view", "weight", None):
+            raise ValueError("scaling must be 'view', 'weight' or None")
         X_list = [np.asarray(X, float) for X in X_list]
         self.n_views_ = len(X_list)
         if self.scaling == "view":
@@ -49,6 +51,8 @@ class ViewConcatenator(BaseEstimator, TransformerMixin):
         if self.scaling == "view":
             X_list = [(X - m) / s / np.sqrt(X.shape[1])
                       for X, m, s in zip(X_list, self.mean_, self.std_)]
+        elif self.scaling == "weight":
+            X_list = [X / np.sqrt(X.shape[1]) for X in X_list]
         return np.hstack(X_list)
 
 
@@ -59,7 +63,7 @@ class EarlyFusion_LSSVM(BaseEstimator, ClassifierMixin):
     kernel_gamma : RBF gamma of the single kernel on the concatenated features
     selected_indices : index array (into the training set) of the subsample
     gamma : LS-SVM regularisation constant (larger = less regularised)
-    scaling : passed to ViewConcatenator ("view" or None)
+    scaling : passed to ViewConcatenator ("view", "weight" or None)
     """
 
     def __init__(self, kernel_gamma, selected_indices, gamma, scaling="view"):
