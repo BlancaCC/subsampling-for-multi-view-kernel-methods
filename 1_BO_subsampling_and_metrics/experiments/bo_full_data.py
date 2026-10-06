@@ -66,7 +66,8 @@ from multi_view_learning_models import (
 )
 
 # ------------------------------ experiment grid -----------------------------
-DATASETS: Sequence[str] = ['Cora','OutdoorScene','ACM','Caltech','Prokaryotic','ProteinFold',"NUS-WIDE", "3Sources", "YouTube"]
+# Ordered by number of samples, small to large.
+DATASETS: Sequence[str] = ["3Sources", "YouTube", "Prokaryotic", "ProteinFold", "Caltech", "NUS-WIDE", "OutdoorScene", "Cora", "ACM"]
 MODELS: Sequence[str] = ["mv_lssvm", "late_fusion", "early_fusion"]
 
 # ------------------------------ protocol config -----------------------------

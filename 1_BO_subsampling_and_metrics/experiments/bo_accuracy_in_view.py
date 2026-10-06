@@ -68,7 +68,8 @@ from subsampling_methods import (
 )
 
 # ------------------------------ experiment grid -----------------------------
-DATASETS: Sequence[str] = ['Cora','OutdoorScene','ACM','Caltech','Prokaryotic','ProteinFold',"NUS-WIDE", "3Sources", "YouTube"]
+# Ordered by number of samples, small to large.
+DATASETS: Sequence[str] = ["3Sources", "YouTube", "Prokaryotic", "ProteinFold", "Caltech", "NUS-WIDE", "OutdoorScene", "Cora", "ACM"]
 SUBSAMPLING_METHODS: Sequence[str] = ["random", "MV_kernel_herding", "simple_kernel_herding", "clustering", "fixed_size_entropy"]
 N_SUBS: Sequence[int] = [10, 25, 50, 100, 150, 200]
 # Extra subset sizes, run only on LARGE_DATASETS (> 694 samples). Smaller

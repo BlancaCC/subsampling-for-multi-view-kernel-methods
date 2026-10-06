@@ -58,7 +58,8 @@ from multi_view_learning_models import LateFusion_LSSVM
 MODEL_NAME = "late_fusion"
 
 # ------------------------------ experiment grid -----------------------------
-DATASETS: Sequence[str] = ['Cora','OutdoorScene','ACM','Caltech','Prokaryotic','ProteinFold',"NUS-WIDE", "3Sources", "YouTube"]
+# Ordered by number of samples, small to large.
+DATASETS: Sequence[str] = ["3Sources", "YouTube", "Prokaryotic", "ProteinFold", "Caltech", "NUS-WIDE", "OutdoorScene", "Cora", "ACM"]
 
 
 SUBSAMPLING_METHODS: Sequence[str] = ["random", "MV_kernel_herding", "simple_kernel_herding", "clustering", "fixed_size_entropy"]

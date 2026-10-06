@@ -60,7 +60,8 @@ from multi_view_learning_models import EarlyFusion_LSSVM, ViewConcatenator
 MODEL_NAME = "early_fusion"
 
 # ------------------------------ experiment grid -----------------------------
-DATASETS: Sequence[str] = ['Cora','OutdoorScene','ACM','Caltech','Prokaryotic','ProteinFold',"NUS-WIDE", "3Sources", "YouTube"]
+# Ordered by number of samples, small to large.
+DATASETS: Sequence[str] = ["3Sources", "YouTube", "Prokaryotic", "ProteinFold", "Caltech", "NUS-WIDE", "OutdoorScene", "Cora", "ACM"]
 # Single (concatenated) view: multi-view "MV_kernel_herding" has no HSIC phase
 # and reduces to simple_kernel_herding, so it is not run.
 SUBSAMPLING_METHODS: Sequence[str] = ["random", "simple_kernel_herding", "clustering", "fixed_size_entropy"]
