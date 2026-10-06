@@ -477,7 +477,7 @@ def plot_tradeoff(
     fig.tight_layout()
     save_figure(fig, out / f"{dataset}_tradeoff", close=False)
 
-    # Paper version: PostScript, no title and no axis labels. PostScript has
+    # Paper version: EPS, no title and no axis labels. EPS (PostScript) has
     # no transparency, so the grid gets an opaque light gray instead of alpha.
     ax.set_title("")
     ax.set_xlabel("")
@@ -486,7 +486,7 @@ def plot_tradeoff(
     fig.tight_layout()
     paper_dir = out / "paper"
     paper_dir.mkdir(exist_ok=True)
-    fig.savefig(paper_dir / f"{dataset}_tradeoff.ps", bbox_inches="tight")
+    fig.savefig(paper_dir / f"{dataset}_tradeoff.eps", bbox_inches="tight")
     plt.close(fig)
 
 
