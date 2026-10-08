@@ -89,8 +89,8 @@ N_TRIALS_PER_DIMENSION = 10
 # --no-correction command-line flag; each setting has its own results folder.
 RECONSTRUCT = True
 RESULTS_ROOTS = {
-    True: Path("results_mv_lssvm_correction_minmax"),
-    False: Path("results_mv_lssvm_no_correction_minmax"),
+    True: Path("results_mv_lssvm_correction"),
+    False: Path("results_mv_lssvm_no_correction"),
 }
 MODEL_NAMES = {True: "mv_lssvm_correction", False: "mv_lssvm_no_correction"}
 RESULTS_ROOT = RESULTS_ROOTS[RECONSTRUCT]

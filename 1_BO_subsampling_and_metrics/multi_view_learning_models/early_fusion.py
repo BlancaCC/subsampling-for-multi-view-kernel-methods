@@ -2,13 +2,12 @@
 Early-fusion baseline: all views are concatenated at the input into one
 single-view dataset, which is subsampled and fed to one standard LS-SVM.
 
-Fusion (ViewConcatenator, fitted on the training rows only):
-    scaling="view": every feature is z-scored, then view v is divided by
-        sqrt(d_v) so each view contributes equally to the squared distances
-        of the single RBF kernel, whatever its dimension or feature scale.
-    scaling="weight": view v is only divided by sqrt(d_v) (for inputs that
-        are already scaled, e.g. MinMax), so each view counts equally.
-    scaling=None:   raw concatenation.
+Fusion (ViewConcatenator). Inputs are already MinMax-scaled by the
+experiments:
+    scaling="weight": view v is divided by sqrt(d_v), so each view counts
+        equally in the squared distances of the single RBF kernel, whatever
+        its dimension.
+    scaling=None:   plain concatenation.
 
 Training (one-vs-rest for m classes):
     standard LS-SVM on (X_concat[S], y[S]) with one kernel width and one gamma.
@@ -25,33 +24,23 @@ class ViewConcatenator(BaseEstimator, TransformerMixin):
 
     Parameters
     ----------
-    scaling : "view" (z-score features, then weight view v by 1/sqrt(d_v)),
-        "weight" (only the 1/sqrt(d_v) weighting) or None (raw).
+    scaling : "weight" (weight view v by 1/sqrt(d_v)) or None (plain).
     """
 
-    def __init__(self, scaling="view"):
+    def __init__(self, scaling="weight"):
         self.scaling = scaling
 
     def fit(self, X_list, y=None):
-        if self.scaling not in ("view", "weight", None):
-            raise ValueError("scaling must be 'view', 'weight' or None")
-        X_list = [np.asarray(X, float) for X in X_list]
+        if self.scaling not in ("weight", None):
+            raise ValueError("scaling must be 'weight' or None")
         self.n_views_ = len(X_list)
-        if self.scaling == "view":
-            self.mean_ = [X.mean(axis=0) for X in X_list]
-            # Constant features keep std 1 so they become 0, not NaN.
-            self.std_ = [np.where(X.std(axis=0) > 0, X.std(axis=0), 1.0)
-                         for X in X_list]
         return self
 
     def transform(self, X_list):
         if len(X_list) != self.n_views_:
             raise ValueError(f"expected {self.n_views_} views, got {len(X_list)}")
         X_list = [np.asarray(X, float) for X in X_list]
-        if self.scaling == "view":
-            X_list = [(X - m) / s / np.sqrt(X.shape[1])
-                      for X, m, s in zip(X_list, self.mean_, self.std_)]
-        elif self.scaling == "weight":
+        if self.scaling == "weight":
             X_list = [X / np.sqrt(X.shape[1]) for X in X_list]
         return np.hstack(X_list)
 
@@ -63,18 +52,17 @@ class EarlyFusion_LSSVM(BaseEstimator, ClassifierMixin):
     kernel_gamma : RBF gamma of the single kernel on the concatenated features
     selected_indices : index array (into the training set) of the subsample
     gamma : LS-SVM regularisation constant (larger = less regularised)
-    scaling : passed to ViewConcatenator ("view", "weight" or None)
+    scaling : passed to ViewConcatenator ("weight" or None)
     """
 
-    def __init__(self, kernel_gamma, selected_indices, gamma, scaling="view"):
+    def __init__(self, kernel_gamma, selected_indices, gamma, scaling="weight"):
         self.kernel_gamma = kernel_gamma
         self.selected_indices = selected_indices
         self.gamma = gamma
         self.scaling = scaling
 
     def fit(self, X_list, y):
-        # Scaling statistics use all training rows (cheap, O(N d)); only the
-        # subsample enters the kernel system.
+        # Only the subsample enters the kernel system.
         self.concatenator_ = ViewConcatenator(self.scaling).fit(X_list)
         X = self.concatenator_.transform(X_list)
         self.model_ = Multiclass_MV_LSSVM(
@@ -106,7 +94,7 @@ if __name__ == "__main__":
 
     rng = np.random.default_rng(0)
     sel = stratified_random_indices(ytr, 0.1, rng)
-    for scaling in ("view", None):
+    for scaling in ("weight", None):
         clf = EarlyFusion_LSSVM(0.5 if scaling else 0.05, sel, gamma=10.0,
                                 scaling=scaling).fit(Xtr_l, ytr)
         print(f"Test error, scaling={scaling}: "

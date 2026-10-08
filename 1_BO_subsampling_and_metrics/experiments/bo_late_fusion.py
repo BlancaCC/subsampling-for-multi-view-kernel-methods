@@ -72,7 +72,7 @@ VAL_SIZE = 0.25            # Inner hold-out: train_full -> train / validation.
 REFIT_ON_TRAIN_PLUS_VAL = True
 SEED = 42
 N_TRIALS_PER_DIMENSION = 10
-RESULTS_ROOT = Path("results_late_fusion_minmax")  # Kept apart from MV-LSSVM results.
+RESULTS_ROOT = Path("results_late_fusion")  # Kept apart from MV-LSSVM results.
 
 SKIP_COMPLETED = True      # Skip runs whose summary.csv already exists.
 SAVE_PREDICTIONS = True    # Save test predictions of every fold.

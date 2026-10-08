@@ -74,9 +74,9 @@ VAL_SIZE = 0.25            # Inner hold-out: train_full -> train / validation.
 REFIT_ON_TRAIN_PLUS_VAL = True
 SEED = 42
 N_TRIALS_PER_DIMENSION = 10
-RESULTS_ROOT = Path("results_early_fusion_minmax")  # Kept apart from other models.
+RESULTS_ROOT = Path("results_early_fusion")  # Kept apart from other models.
 # ViewConcatenator scaling: "weight" (views already MinMax-scaled; weight
-# view v by 1/sqrt(d_v)), "view" (z-score + weight) or None (raw).
+# view v by 1/sqrt(d_v)) or None (plain concatenation).
 SCALING = "weight"
 
 SKIP_COMPLETED = True      # Skip runs whose summary.csv already exists.

@@ -374,6 +374,9 @@ def _set_n_sub_axis(ax: plt.Axes, n_subs: Sequence[int]) -> None:
         ax.minorticks_off()
     ax.set_xticks(values)
     ax.set_xticklabels([str(v) for v in values])
+    if len(values) > 6:
+        # Large n_sub values sit close together on the log axis.
+        ax.tick_params(axis="x", labelrotation=45, labelsize=7)
 
 
 def plot_metric_evolution(
@@ -477,14 +480,13 @@ def plot_tradeoff(
     fig.tight_layout()
     save_figure(fig, out / f"{dataset}_tradeoff", close=False)
 
-    # Paper version: EPS, no title and no axis labels. EPS (PostScript) has
-    # no transparency, so the grid gets an opaque light gray instead of alpha.
+    # EPS for latex, no title and no axis labels. 
     ax.set_title("")
     ax.set_xlabel("")
     ax.set_ylabel("")
     ax.grid(which="both", color="0.85", alpha=1.0)
     fig.tight_layout()
-    paper_dir = out / "paper"
+    paper_dir = out / "eps"
     paper_dir.mkdir(exist_ok=True)
     fig.savefig(paper_dir / f"{dataset}_tradeoff.eps", bbox_inches="tight")
     plt.close(fig)
