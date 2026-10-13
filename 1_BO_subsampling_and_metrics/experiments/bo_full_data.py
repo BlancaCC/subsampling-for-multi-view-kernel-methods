@@ -6,16 +6,19 @@ Models (choose with --model):
                   in every view (P = I, so there are no correction terms).
     late_fusion   LateFusion_LSSVM, one LS-SVM per view on all samples.
     early_fusion  EarlyFusion_LSSVM on the concatenated views.
+    aw_lssvm      AW_LSSVM_Partial with every sample in every view, i.e. the
+                  original AW-LSSVM (adaptive weights from all other views).
 
 Hyperparameters and their search ranges are those of the matching
 subsampling script (bo_accuracy_in_view.py, bo_late_fusion.py,
-bo_early_fusion.py), so the results are directly comparable.
+bo_early_fusion.py, bo_aw_lssvm.py), so the results are directly comparable.
 
 Run from 1_BO_subsampling_and_metrics:
 
     python3 -m experiments.bo_full_data --model mv_lssvm
     python3 -m experiments.bo_full_data --model late_fusion
     python3 -m experiments.bo_full_data --model early_fusion
+    python3 -m experiments.bo_full_data --model aw_lssvm
 
 Output layout (under RESULTS_ROOT/<model>), same files as the other scripts:
     <dataset>/full/all/   run_config, outer_fold_metrics, best_hyperparameters,
@@ -44,6 +47,7 @@ from sklearn.metrics import accuracy_score
 from sklearn.model_selection import StratifiedKFold, train_test_split
 
 import experiments.bo_accuracy_in_view as mv_exp
+import experiments.bo_aw_lssvm as aw_exp
 import experiments.bo_early_fusion as early_exp
 import experiments.bo_late_fusion as late_exp
 from experiments.bo_accuracy_in_view import (
@@ -60,6 +64,7 @@ from experiments.bo_accuracy_in_view import (
 )
 from get_data import get_dataset
 from multi_view_learning_models import (
+    AW_LSSVM_Partial,
     EarlyFusion_LSSVM,
     LateFusion_LSSVM,
     Multiclass_MV_LSSVM,
@@ -68,7 +73,7 @@ from multi_view_learning_models import (
 # ------------------------------ experiment grid -----------------------------
 # Ordered by number of samples, small to large.
 DATASETS: Sequence[str] = ["3Sources", "YouTube", "Prokaryotic", "ProteinFold", "Caltech", "NUS-WIDE", "OutdoorScene", "Cora", "ACM"]
-MODELS: Sequence[str] = ["mv_lssvm", "late_fusion", "early_fusion"]
+MODELS: Sequence[str] = ["mv_lssvm", "late_fusion", "early_fusion", "aw_lssvm"]
 
 # ------------------------------ protocol config -----------------------------
 # Kept identical to the subsampling scripts.
@@ -132,10 +137,26 @@ def early_fusion_spec(n_views: int) -> tuple[int, Callable, Callable]:
     return early_exp.n_trials_for(METHOD), early_exp.params_from, build
 
 
+def aw_lssvm_spec(n_views: int) -> tuple[int, Callable, Callable]:
+    """(n_trials, params_from, build_model) for AW-LSSVM on all samples."""
+    def params_from(source):
+        return aw_exp.params_from(source, n_views)
+
+    def build(params, n):
+        reg, ker, ro, decay = params
+        return AW_LSSVM_Partial(
+            kernel_gammas=ker, selected_indices=all_rows(n, n_views),
+            gammas=reg, ro=ro, decay=decay,
+            coupling=aw_exp.AW_COUPLING, range_steps=aw_exp.AW_RANGE_STEPS,
+        )
+    return aw_exp.n_trials_for(METHOD, n_views), params_from, build
+
+
 MODEL_SPECS: Mapping[str, Callable[[int], tuple[int, Callable, Callable]]] = {
     "mv_lssvm": mv_lssvm_spec,
     "late_fusion": late_fusion_spec,
     "early_fusion": early_fusion_spec,
+    "aw_lssvm": aw_lssvm_spec,
 }
 MODEL_NAMES = {m: f"{m}_full" for m in MODEL_SPECS}  # Value of the model column.
 
