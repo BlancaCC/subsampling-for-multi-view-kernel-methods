@@ -49,6 +49,8 @@ from experiments.bo_accuracy_in_view import (
     write_mapping_csv,
     FEATURE_SCALING,
     minmax_scale,
+    MV_KH_EXTRA_TRIALS,
+    check_protocol,
     LARGE_DATASETS,
     build_runs,
 )
@@ -67,7 +69,7 @@ N_SUBS: Sequence[int] = [10, 25, 50, 100, 150, 200]
 LARGE_N_SUBS: Sequence[int] = [300, 400, 500, 600]  # LARGE_DATASETS only.
 
 # ------------------------------ protocol config -----------------------------
-N_OUTER_FOLDS = 5          # Outer CV: train_full / test.
+N_OUTER_FOLDS = 10         # Outer CV: train_full / test.
 VAL_SIZE = 0.25            # Inner hold-out: train_full -> train / validation.
 REFIT_ON_TRAIN_PLUS_VAL = True
 SEED = 42
@@ -85,7 +87,7 @@ def n_trials_for(method: str, n_views: int) -> int:
     n_trials = N_TRIALS_PER_DIMENSION * 2 * n_views
     if method == "MV_kernel_herding":
         # Herding has one extra tuned hyperparameter (warmup_steps).
-        n_trials += 2 * N_TRIALS_PER_DIMENSION
+        n_trials += MV_KH_EXTRA_TRIALS
     return n_trials
 
 
@@ -153,6 +155,7 @@ def write_experiment_metadata(root: Path) -> None:
             "refit_on_train_plus_val": REFIT_ON_TRAIN_PLUS_VAL,
             "seed": SEED,
             "n_trials_per_dimension": N_TRIALS_PER_DIMENSION,
+            "mv_kh_extra_trials": MV_KH_EXTRA_TRIALS,
             "feature_scaling": FEATURE_SCALING,
             "warmup_range": WARMUP_RANGE,
             "sampler_kwargs": dict(SAMPLER_KWARGS),
@@ -378,6 +381,10 @@ def main() -> None:
     if unknown:
         raise KeyError(f"Unknown methods {unknown}. Options: {list(SAMPLERS)}")
 
+    check_protocol(RESULTS_ROOT, {
+        "n_outer_folds": N_OUTER_FOLDS,
+        "mv_kh_extra_trials": MV_KH_EXTRA_TRIALS,
+    })
     write_experiment_metadata(RESULTS_ROOT)
     runs = build_runs(DATASETS, SUBSAMPLING_METHODS, N_SUBS, LARGE_N_SUBS)
     logger.info("Starting %d late-fusion runs.", len(runs))

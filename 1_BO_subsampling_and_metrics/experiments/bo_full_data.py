@@ -61,6 +61,7 @@ from experiments.bo_accuracy_in_view import (
     write_mapping_csv,
     FEATURE_SCALING,
     minmax_scale,
+    check_protocol,
 )
 from get_data import get_dataset
 from multi_view_learning_models import (
@@ -77,7 +78,7 @@ MODELS: Sequence[str] = ["mv_lssvm", "late_fusion", "early_fusion", "aw_lssvm"]
 
 # ------------------------------ protocol config -----------------------------
 # Kept identical to the subsampling scripts.
-N_OUTER_FOLDS = 5          # Outer CV: train_full / test.
+N_OUTER_FOLDS = 10         # Outer CV: train_full / test.
 VAL_SIZE = 0.25            # Inner hold-out: train_full -> train / validation.
 REFIT_ON_TRAIN_PLUS_VAL = True
 SEED = 42
@@ -372,6 +373,7 @@ def main() -> None:
     model = args.model
     root = RESULTS_ROOT / model
 
+    check_protocol(root, {"n_outer_folds": N_OUTER_FOLDS})
     write_experiment_metadata(root, model)
     logger.info("Starting %d %s runs.", len(DATASETS), MODEL_NAMES[model])
 

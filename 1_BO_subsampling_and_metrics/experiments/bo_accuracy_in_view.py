@@ -78,11 +78,14 @@ LARGE_N_SUBS: Sequence[int] = [300, 400, 500, 600]
 LARGE_DATASETS = frozenset({"NUS-WIDE", "Caltech", "OutdoorScene", "ACM", "Cora"})
 
 # ------------------------------ protocol config -----------------------------
-N_OUTER_FOLDS = 5          # Outer CV: train_full / test.
+N_OUTER_FOLDS = 10         # Outer CV: train_full / test.
 VAL_SIZE = 0.25            # Inner hold-out: train_full -> train / validation.
 REFIT_ON_TRAIN_PLUS_VAL = True
 SEED = 42
 N_TRIALS_PER_DIMENSION = 10
+# Extra Optuna trials for MV kernel herding, which also tunes warmup_steps.
+# Shared by every experiment script.
+MV_KH_EXTRA_TRIALS = 50
 # Correction terms of the MV-LSSVM extension (Multiclass_MV_LSSVM.reconstruct).
 # True: removed samples' errors are reconstructed (proposed model).
 # False: kept samples only, no correction terms (ablation). Set with the
@@ -193,7 +196,7 @@ def n_trials_for(method: str, n_views: int) -> int:
     n_trials = N_TRIALS_PER_DIMENSION * (2 * n_views + 1)
     if method == "MV_kernel_herding":
         # Herding has one extra tuned hyperparameter (warmup_steps).
-        n_trials += 2 * N_TRIALS_PER_DIMENSION
+        n_trials += MV_KH_EXTRA_TRIALS
     return n_trials
 
 
@@ -374,6 +377,37 @@ def write_mapping_csv(path: Path, mapping: Mapping[str, Any]) -> None:
     ).to_csv(path, index=False)
 
 
+def check_protocol(root: Path, protocol: Mapping[str, Any]) -> None:
+    """Refuses to add runs to results made with a different protocol.
+
+    Finished runs are skipped, so changing e.g. the number of folds and
+    re-running would silently mix old and new runs in `root`.
+
+    Args:
+        root: Results root of the experiment.
+        protocol: Current values of the settings that must match the
+            experiment_metadata.csv of the finished runs in `root`.
+
+    Raises:
+        RuntimeError: If `root` holds finished runs with other settings.
+    """
+    path = root / "experiment_metadata.csv"
+    if not path.exists() or not any(root.glob("*/*/*/summary.csv")):
+        return
+    old = pd.read_csv(path, dtype=str).set_index("key")["value"]
+    changed = {
+        key: f"{old.get(key, 'not recorded')} -> {value}"
+        for key, value in protocol.items()
+        if old.get(key) != str(value)
+    }
+    if changed:
+        raise RuntimeError(
+            f"{root} already holds finished runs made with different "
+            f"settings ({changed}). They would be skipped and mixed with "
+            "the new runs. Move or delete that folder, then run again."
+        )
+
+
 def get_git_commit() -> str:
     """Returns the current git commit hash, or 'unknown'."""
     try:
@@ -411,6 +445,7 @@ def write_experiment_metadata(root: Path) -> None:
             "refit_on_train_plus_val": REFIT_ON_TRAIN_PLUS_VAL,
             "seed": SEED,
             "n_trials_per_dimension": N_TRIALS_PER_DIMENSION,
+            "mv_kh_extra_trials": MV_KH_EXTRA_TRIALS,
             "feature_scaling": FEATURE_SCALING,
             "warmup_range": WARMUP_RANGE,
             "sampler_kwargs": dict(SAMPLER_KWARGS),
@@ -690,6 +725,10 @@ def main() -> None:
     if unknown:
         raise KeyError(f"Unknown methods {unknown}. Options: {list(SAMPLERS)}")
 
+    check_protocol(RESULTS_ROOT, {
+        "n_outer_folds": N_OUTER_FOLDS,
+        "mv_kh_extra_trials": MV_KH_EXTRA_TRIALS,
+    })
     write_experiment_metadata(RESULTS_ROOT)
     runs = build_runs(DATASETS, SUBSAMPLING_METHODS, N_SUBS, LARGE_N_SUBS)
     logger.info("Starting %d %s runs.", len(runs), MODEL_NAME)
