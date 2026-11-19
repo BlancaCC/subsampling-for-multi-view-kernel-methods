@@ -1,7 +1,11 @@
 # Multi-View Kernel Herding for Efficient Multi-View Learning
 
-Code for the ESANN 2027 paper *Multi-View Kernel Herding for Efficient
-Multi-View Learning* (B. Cano-Camarero, F. Faramarzi Lighvan, L. Houthuys).
+Code for the paper *Multi-View Kernel Herding for Efficient Multi-View
+Learning* (B. Cano-Camarero, F. Faramarzi Lighvan, L. Houthuys).
+
+> **Status:** the paper has been **submitted to ESANN 2027 and is under
+> review**. It has not been accepted yet; this README will be updated with the
+> final reference if it is published.
 
 Kernel methods scale at least quadratically with the number of samples, and
 the cost grows with the number of views. **Multi-View Kernel Herding (MKH)**
@@ -24,6 +28,7 @@ models and the scripts that run and analyze the experiments of the paper.
 ```
 .
 ├── README.md
+├── LICENSE                              # MIT
 ├── requirements.txt
 ├── usage/                               # How to use MKH (guide + runnable example)
 ├── Datasets/                            # .mat files (not tracked, see "Datasets")
@@ -203,15 +208,15 @@ timings between runs on the same machine.
 
 ## Citation
 
-If you use this code, please cite:
+The paper is under review (submitted to ESANN 2027). Until it is
+published, please cite it as:
 
 ```bibtex
-@inproceedings{canocamarero2027multiview,
-  title     = {Multi-View Kernel Herding for Efficient Multi-View Learning},
-  author    = {Cano-Camarero, Blanca and Faramarzi Lighvan, Farnaz and Houthuys, Lynn},
-  booktitle = {SUBMITED Proceedings of the European Symposium on Artificial Neural Networks,
-               Computational Intelligence and Machine Learning (ESANN)},
-  year      = {2027}
+@unpublished{canocamarero2026multiview,
+  title  = {Multi-View Kernel Herding for Efficient Multi-View Learning},
+  author = {Cano-Camarero, Blanca and Faramarzi Lighvan, Farnaz and Houthuys, Lynn},
+  note   = {Submitted to ESANN 2027, under review},
+  year   = {2026}
 }
 ```
 
@@ -224,5 +229,5 @@ under the Onderzoeksprogramma Artificiële Intelligentie Vlaanderen program.
 
 ## License
 
-TODO: add a license (e.g. MIT) as a `LICENSE` file before making the
-repository public.
+This code is released under the [MIT License](LICENSE). The datasets are not
+covered by this license; see their original sources.
