@@ -85,7 +85,7 @@ SEED = 42
 N_TRIALS_PER_DIMENSION = 10
 # Extra Optuna trials for MV kernel herding, which also tunes warmup_steps.
 # Shared by every experiment script.
-MV_KH_EXTRA_TRIALS = 50
+MV_KH_EXTRA_TRIALS = 30
 # Correction terms of the MV-LSSVM extension (Multiclass_MV_LSSVM.reconstruct).
 # True: removed samples' errors are reconstructed (proposed model).
 # False: kept samples only, no correction terms (ablation). Set with the
